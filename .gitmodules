@@ -7,3 +7,6 @@
 [submodule "modules/mod-individual-progression"]
 	path = modules/mod-individual-progression
 	url = https://github.com/ZhengPeiRu21/mod-individual-progression.git
+[submodule "modules/mod-challenge-modes"]
+	path = modules/mod-challenge-modes
+	url = https://github.com/ZhengPeiRu21/mod-challenge-modes.git
