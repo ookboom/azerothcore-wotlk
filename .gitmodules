@@ -4,3 +4,6 @@
 [submodule "modules/mod-eluna"]
 	path = modules/mod-eluna
 	url = https://github.com/azerothcore/mod-eluna.git
+[submodule "modules/mod-individual-progression"]
+	path = modules/mod-individual-progression
+	url = https://github.com/ZhengPeiRu21/mod-individual-progression.git
