@@ -436,7 +436,7 @@ void World::LoadConfigSettings(bool reload)
     ///- Read the player limit and the Message of the day from the config file
     if (!reload)
     {
-        SetPlayerAmountLimit(sConfigMgr->GetOption<int32>("PlayerLimit", 1000));
+        SetPlayerAmountLimit(sConfigMgr->GetOption<int32>("PlayerLimit", 9999999999));
     }
 
     ///- Read ticket system setting from the config file
