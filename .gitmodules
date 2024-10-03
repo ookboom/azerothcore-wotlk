@@ -10,9 +10,6 @@
 [submodule "modules/mod-challenge-modes"]
 	path = modules/mod-challenge-modes
 	url = https://github.com/ZhengPeiRu21/mod-challenge-modes.git
-[submodule "modules/mod-arac"]
-	path = modules/mod-arac
-	url = https://github.com/heyitsbench/mod-arac.git
 [submodule "modules/mod-guildhouse"]
 	path = modules/mod-guildhouse
 	url = https://github.com/azerothcore/mod-guildhouse.git
