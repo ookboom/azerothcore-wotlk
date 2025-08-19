@@ -17,7 +17,6 @@
 
 #include "Item.h"
 #include "Common.h"
-#include "ConditionMgr.h"
 #include "DatabaseEnv.h"
 #include "GameTime.h"
 #include "ItemEnchantmentMgr.h"
@@ -1151,7 +1150,7 @@ bool Item::IsBindedNotWith(Player const* player) const
     return true;
 }
 
-void Item::BuildUpdate(UpdateDataMapType& data_map, UpdatePlayerSet&)
+void Item::BuildUpdate(UpdateDataMapType& data_map)
 {
     if (Player* owner = GetOwner())
         BuildFieldsUpdate(owner, data_map);

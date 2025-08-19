@@ -194,6 +194,8 @@ ScriptedAI::ScriptedAI(Creature* creature) : CreatureAI(creature),
 {
     _isHeroic = me->GetMap()->IsHeroic();
     _difficulty = Difficulty(me->GetMap()->GetSpawnMode());
+    _invincible = false;
+    _canAutoAttack = true;
 }
 
 void ScriptedAI::AttackStartNoMove(Unit* who)
@@ -219,7 +221,14 @@ void ScriptedAI::UpdateAI(uint32 /*diff*/)
     if (!UpdateVictim())
         return;
 
-    DoMeleeAttackIfReady();
+    if (IsAutoAttackAllowed())
+        DoMeleeAttackIfReady();
+}
+
+void ScriptedAI::DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damagetype*/, SpellSchoolMask /*damageSchoolMask*/)
+{
+    if (IsInvincible() && damage >= me->GetHealth())
+        damage = me->GetHealth() - 1;
 }
 
 void ScriptedAI::DoStartMovement(Unit* victim, float distance, float angle)
@@ -482,7 +491,7 @@ Unit* ScriptedAI::DoSelectLowestHpFriendly(float range, uint32 minHPDiff)
     Unit* unit = nullptr;
     Acore::MostHPMissingInRange u_check(me, range, minHPDiff);
     Acore::UnitLastSearcher<Acore::MostHPMissingInRange> searcher(me, unit, u_check);
-    Cell::VisitAllObjects(me, searcher, range);
+    Cell::VisitObjects(me, searcher, range);
 
     return unit;
 }
@@ -492,7 +501,7 @@ std::list<Creature*> ScriptedAI::DoFindFriendlyCC(float range)
     std::list<Creature*> list;
     Acore::FriendlyCCedInRange u_check(me, range);
     Acore::CreatureListSearcher<Acore::FriendlyCCedInRange> searcher(me, list, u_check);
-    Cell::VisitAllObjects(me, searcher, range);
+    Cell::VisitObjects(me, searcher, range);
     return list;
 }
 
@@ -501,7 +510,7 @@ std::list<Creature*> ScriptedAI::DoFindFriendlyMissingBuff(float range, uint32 u
     std::list<Creature*> list;
     Acore::FriendlyMissingBuffInRange u_check(me, range, uiSpellid);
     Acore::CreatureListSearcher<Acore::FriendlyMissingBuffInRange> searcher(me, list, u_check);
-    Cell::VisitAllObjects(me, searcher, range);
+    Cell::VisitObjects(me, searcher, range);
     return list;
 }
 
@@ -512,7 +521,7 @@ Player* ScriptedAI::GetPlayerAtMinimumRange(float minimumRange)
     Acore::PlayerAtMinimumRangeAway check(me, minimumRange);
     Acore::PlayerSearcher<Acore::PlayerAtMinimumRangeAway> searcher(me, player, check);
 
-    Cell::VisitWorldObjects(me, searcher, minimumRange);
+    Cell::VisitObjects(me, searcher, minimumRange);
 
     return player;
 }
@@ -584,7 +593,8 @@ Player* ScriptedAI::SelectTargetFromPlayerList(float maxdist, uint32 excludeAura
 BossAI::BossAI(Creature* creature, uint32 bossId) : ScriptedAI(creature),
     instance(creature->GetInstanceScript()),
     summons(creature),
-    _bossId(bossId)
+    _bossId(bossId),
+    _nextHealthCheck(0, { }, false)
 {
     callForHelpRange = 0.0f;
     if (instance)
@@ -616,10 +626,14 @@ void BossAI::_Reset()
     if (!me->IsAlive())
         return;
 
+    if (me->IsEngaged())
+        return;
+
     me->SetCombatPulseDelay(0);
     me->ResetLootMode();
     events.Reset();
     scheduler.CancelAll();
+    me->m_Events.KillAllEvents(false);
     summons.DespawnAll();
     ClearUniqueTimedEventsDone();
     _healthCheckEvents.clear();
@@ -728,27 +742,28 @@ void BossAI::UpdateAI(uint32 diff)
         }
     }
 
-    DoMeleeAttackIfReady();
+    if (IsAutoAttackAllowed())
+        DoMeleeAttackIfReady();
 }
 
-void BossAI::DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damagetype*/, SpellSchoolMask /*damageSchoolMask*/)
+void BossAI::DamageTaken(Unit* attacker, uint32& damage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask)
 {
-    if (!_healthCheckEvents.empty())
-    {
-        for (auto& check : _healthCheckEvents)
-        {
-            if (check._valid && me->HealthBelowPctDamaged(check._healthPct, damage))
-            {
-                check._exec();
-                check._valid = false;
-            }
-        }
+    ScriptedAI::DamageTaken(attacker, damage, damagetype, damageSchoolMask);
 
-        _healthCheckEvents.remove_if([&](HealthCheckEventData data) -> bool
+    if (_nextHealthCheck._valid)
+        if (me->HealthBelowPctDamaged(_nextHealthCheck._healthPct, damage))
         {
-            return !data._valid;
-        });
-    }
+            _nextHealthCheck._exec();
+            _nextHealthCheck._valid = false;
+
+            _healthCheckEvents.remove_if([&](HealthCheckEventData data) -> bool
+            {
+                return data._healthPct == _nextHealthCheck._healthPct;
+            });
+
+            if (!_healthCheckEvents.empty())
+                _nextHealthCheck = _healthCheckEvents.front();
+        }
 }
 
 /**
@@ -760,6 +775,7 @@ void BossAI::DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*
 void BossAI::ScheduleHealthCheckEvent(uint32 healthPct, std::function<void()> exec)
 {
     _healthCheckEvents.push_back(HealthCheckEventData(healthPct, exec));
+    _nextHealthCheck = _healthCheckEvents.front();
 };
 
 void BossAI::ScheduleHealthCheckEvent(std::initializer_list<uint8> healthPct, std::function<void()> exec)
@@ -768,6 +784,22 @@ void BossAI::ScheduleHealthCheckEvent(std::initializer_list<uint8> healthPct, st
     {
         _healthCheckEvents.push_back(HealthCheckEventData(checks, exec));
     }
+
+    _nextHealthCheck = _healthCheckEvents.front();
+}
+
+void BossAI::ScheduleEnrageTimer(uint32 spellId, Milliseconds timer, uint8 textId /*= 0*/)
+{
+    me->m_Events.AddEventAtOffset([this, spellId, textId]
+    {
+        if (!me->IsAlive())
+            return;
+
+        if (textId)
+            Talk(textId);
+
+        DoCastSelf(spellId, true);
+    }, timer);
 }
 
 // WorldBossAI - for non-instanced bosses

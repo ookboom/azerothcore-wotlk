@@ -25,7 +25,6 @@
 
 #include "Dynamic/TypeList.h"
 #include "GridRefMgr.h"
-#include <map>
 #include <unordered_map>
 
 /*
@@ -36,7 +35,6 @@
 template<class OBJECT>
 struct ContainerMapList
 {
-    //std::map<OBJECT_HANDLE, OBJECT *> _element;
     GridRefMgr<OBJECT> _element;
 };
 

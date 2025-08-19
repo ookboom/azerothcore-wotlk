@@ -21,6 +21,7 @@
 #include "black_temple.h"
 #include "Player.h"
 #include "SpellAuraEffects.h"
+#include "SpellMgr.h"
 #include "SpellScript.h"
 
 enum Says
@@ -109,10 +110,11 @@ public:
     {
         if (Player* target = ObjectAccessor::GetPlayer(_owner, _targetGUID))
         {
-            target->m_clientGUIDs.insert(_owner.GetGUID());
+            // @todo: wtf? this is wrong but I cba looking into it.
+            target->GetObjectVisibilityContainer().LinkWorldObjectVisibility(&_owner);
             _owner.CastSpell(target, SPELL_ENVENOM, true);
             target->RemoveAurasDueToSpell(SPELL_DEADLY_POISON);
-            target->m_clientGUIDs.erase(_owner.GetGUID());
+            target->GetObjectVisibilityContainer().UnlinkWorldObjectVisibility(&_owner);
         }
         return true;
     }
@@ -177,6 +179,7 @@ struct boss_illidari_council : public BossAI
         else if (param == ACTION_END_ENCOUNTER)
         {
             me->setActive(false);
+            me->GetMap()->UpdateEncounterState(ENCOUNTER_CREDIT_KILL_CREATURE, me->GetEntry(), me);
             for (uint8 i = DATA_GATHIOS_THE_SHATTERER; i <= DATA_VERAS_DARKSHADOW; ++i)
                 if (Creature* member = instance->GetCreature(i))
                     if (member->IsAlive())
@@ -199,7 +202,7 @@ struct boss_illidari_council : public BossAI
         if (!me->isActiveObject())
             return;
 
-        if (!SelectTargetFromPlayerList(115.0f))
+        if (!SelectTargetFromPlayerList(150.0f))
         {
             EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
             return;
@@ -339,7 +342,7 @@ struct boss_gathios_the_shatterer : public boss_illidari_council_memberAI
             if (roll_chance_i(50))
                 Talk(SAY_COUNCIL_SPECIAL);
             DoCastSelf(SPELL_CONSECRATION);
-            events.ScheduleEvent(EVENT_SPELL_AURA, 30s);
+            events.ScheduleEvent(EVENT_SPELL_CONSECRATION, 30s);
             break;
         case EVENT_SPELL_HAMMER_OF_JUSTICE:
             if (Unit* target = me->GetVictim())
