@@ -102,3 +102,5 @@ local.properties
 #  !modules/yourmodule
 #
 # ==================
+!modules/mod-aoe-loot
+!modules/mod-eluna
