@@ -1,9 +1,0 @@
-[submodule "modules/mod-eluna"]
-	path = modules/mod-eluna
-	url = https://github.com/azerothcore/mod-eluna.git
-[submodule "modules/mod-aoe-loot"]
-	path = modules/mod-aoe-loot
-	url = https://github.com/azerothcore/mod-aoe-loot.git
-[submodule "modules/mod-better-item-reloading"]
-	path = modules/mod-better-item-reloading
-	url = https://github.com/azerothcore/mod-better-item-reloading.git
