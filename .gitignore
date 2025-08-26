@@ -104,3 +104,4 @@ local.properties
 # ==================
 !modules/mod-aoe-loot
 !modules/mod-eluna
+!modules/mod-transmog

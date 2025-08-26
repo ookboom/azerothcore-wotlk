@@ -4,3 +4,6 @@
 [submodule "modules/mod-aoe-loot"]
 	path = modules/mod-aoe-loot
 	url = https://github.com/ookboom/mod-aoe-loot.git
+[submodule "modules/mod-transmog"]
+	path = modules/mod-transmog
+	url = https://github.com/ookboom/mod-transmog.git
